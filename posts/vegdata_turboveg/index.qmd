@@ -1,0 +1,98 @@
+---
+title: "Vegdata package and descriptive statistics"
+description: |
+  A short introduction to vegdata package, accessing Turboveg database and plots analysis.
+author:
+  - name: Grzegorz Sapijaszko
+    url: http://www.sapijaszko.net/glupotki
+date: "2022-01-20"
+bibliography: ../../references.bib
+categories: [R, vegdata, turboveg, vegetation]
+draft: true
+---
+
+```{r}
+#| include: false
+#| label: setup
+library(here)
+library(kableExtra)
+```
+
+## Introduction
+
+**Turboveg for Windows**\index{\textbf{Turboveg}}[^1] is a program designed for the storage, selection, and export of vegetation data (relevés). For more information please refer to @hennekensTURBOVEGComprehensiveData2001 and/or author's [homepage](https://www.synbiosys.alterra.nl/turboveg/).
+
+[^1]: Currently using `Turboveg for Windows 2.155` available from [author's website](https://www.synbiosys.alterra.nl/turboveg/)
+
+Please note: **Turboveg** uses **dBase** database file system for storing the observations. Please use `Pack & Reindex` option from the `Database` menu. In fact, it purges (deletes) all marked for deletion records from the database. It's essential to do it as a routine when you modify/delete the species from your plots. Otherwise it will be still in the database, and visible to **R**.
+
+In this example we will get the data from **Turboveg**, prepare vegetation matrix, compute few indices and plot them.
+
+## Data access and preparation
+
+For data access we will use `vegdata` package [@vegdata2010]. It handles vegetation data from different sources, including **Turboveg** and allows to run taxonomic harmonization with appropriate taxonomic list. **Turboveg** provides different abundance codes lists, which can be also extended by user. Data is stored in `tvscale.dbf` file. To perform vegetation analysis a kind of mapping between abundance codes and numerical values is required. For this purpose the data base file contain the mean cover percentage values. `vegdata` provides a `tv.coverperc` function for automatic conversion. For example, the often used Braun--Blanquet scale @braun-blanquet_pflanzensoziologie_1964 is shown in table @tbl-bbT.
+
+```{r}
+#| echo: false
+#| label: tbl-bbT
+#| tbl-cap: caption = "Modified Braun-Blanquet (old) scale")
+
+bbT <- data.frame(
+  Scale = as.character(c("r", "$+$", 1:5, "x", "A")),
+  Meaning = c("very few individuals", "few individuals", "numerous individuals", "5 -- 25 %", "25 -- 50 %", "50 -- 75 %", "75 -- 100 %", "few individuals", "No presence"),
+  Mean = c(1, 2, 3, 13, 38, 68, 88, 2, 0)
+)
+
+kbl(bbT, booktabs = TRUE, 
+    linesep = "",
+    col.names = linebreak(c("Scale", "Meaning", "Mean coverage [%]"), align = "c"),
+    align = c("ccc")) |>
+  kable_styling(position = "center")
+```
+
+In addition to abundance scale, **Turboveg** provides additional column for separation of growth form like trees, shrubs, herbs, etc. Layers and corresponding numbers are shown in table @tbl-layers.
+
+There is a possibility to add additional fields to the database as well, where other attributes like micro location, flowering status, development status etc. can be stored. For analysis of these different species-plot attributes `vegdata` provides `tv.veg` function.
+
+```{r}
+#| echo: false
+#| label: tbl-layers
+#| tbl-cap:  Turboveg layers definition
+layers <- data.frame(
+  No <- c(0:9),
+  Name <-c("No layer", "Tree layer (high) (t1)", "Tree layer -middle- (t2)", "Tree layer -low- (t3)", "Shrub layer (high) (s1)", "Shrub layer -low- (s2)", "Herb layer (hl)", "Juvenile (jl)", "Seedling (<1 year) (sl)", "Moss layer (ml)")
+  )
+
+kbl(layers, booktabs = TRUE, 
+    linesep = "",
+    col.names = linebreak(c("Layer number", "Description"), align = "c"),
+    align = c("cc")
+    ) |>
+  kable_styling(position = "center")
+```
+
+Let's load the library into R environment as usuall.
+
+```{r}
+#| echo: TRUE
+library(vegdata)
+```
+
+As the `vegdata` internal functions extensively uses the directory structure of **Turboveg** the first thing is to set `tv_home`. `vegdata` package provides `tv.home()` function for it, which tries to find **Turboveg** installation path.[^2]
+
+[^2]: It works for Windows, and Unix/Linux with `wine.`
+
+```{r}
+#| echo: TRUE
+#| message: TRUE
+tv.home()
+```
+
+If you would like to change it, please declare it by setting `tv_home`.
+
+```{r}
+#| eval: false
+options(tv_home="path_to_your_Turboveg_root_directory")
+```
+
+![](thumbnail.jpg)

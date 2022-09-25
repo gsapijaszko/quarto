@@ -1,0 +1,27 @@
+project:
+  type: website
+
+execute:
+  freeze: auto
+
+website:
+  title: "small tRiffles"
+  description: "Głupotki"
+  site-url: http://www.sapijaszko.net/glupotki/
+  navbar:
+    right:
+      - about.qmd
+      - icon: github
+        href: https://github.com/gsapijaszko
+      - icon: twitter
+        href: https://twitter.com/gsapijaszko
+      - icon: rss
+        href: index.xml
+  twitter-card: true
+format:
+  html:
+    theme: flatly
+    css: styles.css
+
+# comments:
+#   hypothesis: true

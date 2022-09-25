@@ -1,0 +1,115 @@
+---
+title: "R, PostGIS and OSM data"
+author: "Grzegorz Sapijaszko"
+date: "2022-09-09"
+categories: [R, spatial analysis, openstreetmap]
+bibliography: ../../references.bib
+image: "index.jpg"
+draft: false
+---
+
+The [State Forests](https://www.bdl.lasy.gov.pl/portal/) in Poland designated special forest areas where visitors are allowed to camp overnight.[^1] In total, it has more than 1300 such regions with area of 65 000 ha. I'm using those places during my cycling trips quite often. One time I stopped at a place, where there was virtually no ways/tracks shown in OSMAnd. This is where the story begins.
+
+[^1]: For more information see [Easier to stay overnight in the wilderness in the State Forests](https://www.lasy.gov.pl/en/information/news/easier-to-stay-overnight-in-the-wilderness-in-the-state-forests)
+
+Data in [Openstreetmap](http://www.osm.org) are entered quite irregularly. The spatial data density ranges from very high (usually in towns) to very low (in forests or rural areas). Let's check the spatial density of roads (or tracks) in those forest areas.
+
+The areas can be [requested](https://www.bdl.lasy.gov.pl/portal/wniosek) from State Forests portal in `SHP` format. The OSM data will be fetched from local Postgres/PostGIS database using `sf` [@sf2018] and `RPostgreSQL` [@R-RPostgreSQL] packages.
+
+```{r}
+#| label: setup
+#| output: false
+#|
+library(sf)
+library(RPostgreSQL)
+```
+
+To retrieve user and password data we will use `config` package [@R-config].
+
+```{r}
+#| code-overflow: wrap
+dw <- config::get("osmdb")
+con <- dbConnect("PostgreSQL", dbname = dw$database, host = dw$server, user = dw$uid, password = dw$pwd)
+```
+
+<!-- [This is a span that has the class aside which places it in the margin without a footnote number.]{.aside} -->
+
+Let's read the forest data from `SHP` file. As some of the areas have invalid geometries (usually self-intersections of polygons) we will apply `st_make_valid` function, transform it to EPSG:2180 reference system and add `id` and `area` columns.
+
+```{r}
+#| label: forestAreas
+#| output: false
+
+forests_areas <-
+  sf::st_read("data/Obszary_Zanocuj_w_lesie_-_08_2022.shp") |>
+  st_make_valid(geometry) |>
+  st_transform(crs = 2180) |>
+  dplyr::mutate(id = dplyr::row_number(), area = st_area(geometry))
+```
+
+Two first rows:
+
+```{r}
+#| echo: false
+options("width" = 100)
+```
+
+```{r}
+head(forests_areas, 2)
+```
+
+Now, let's read ways from PostgreSQL table. Please note, in query we use PostGIS `ST_Transform` function to transfer OSM data to EPSG:2180 coordinate system. Using pipe with `st_intersection` function (from `sf` package) we will crop the ways to and only to the forest areas.
+
+```{r}
+#| label: select_highways
+#| warning: false
+sql <- paste(
+  "SELECT osm_id, highway, ST_Transform(way, 2180) AS way",
+  "FROM planet_osm_line",
+  "WHERE planet_osm_line.highway IS NOT NULL")
+
+tracks <- st_read(con, query = sql) |>
+  st_intersection(forests_areas) |>
+  dplyr::mutate(length = as.numeric(st_length(way))) |>
+  subset(select = c("osm_id", "highway", "length"))
+```
+
+After a while we gets our spatial data frame with `r nrow(tracks)` ways. Now, we can join the areas and calculate an index, showing the length of the ways [in km] per square kilometer of the forest areas. This would be an indicator, where to map the tracks. Output will be written to `GPKG` file for further usage.
+
+```{r}
+#| label: summary
+#| output: false
+forests_areas |>
+  st_join(tracks) |>
+  dplyr::group_by(id) |>
+  dplyr::summarise(sum = sum(length) / 1000) |>
+  st_drop_geometry() |>
+  dplyr::left_join(forests_areas, by = "id") |>
+  dplyr::mutate(ways_sq_km = sum / (as.numeric(area) / 1e6))|>
+  st_as_sf() |>
+  st_cast(to = "MULTIPOLYGON") |>
+  st_write(dsn = "data/areas.gpkg", driver = "GPKG", append = FALSE)
+```
+
+Finally, we can visualize the set with `leaflet` package [@R-leaflet].
+
+```{r}
+#| label: leaflet
+#| output: false
+library(leaflet)
+areas <- st_read(dsn = "data/areas.gpkg") |>
+  sf::st_transform(crs = 4326)
+```
+```{r}
+#| label: leaflet_map
+#| column: page
+leaflet(areas) |>
+  setMaxBounds(14, 49, 29, 55) |>
+  setView(16.7, 50.9, 9) |>
+  addTiles() |>
+  addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0.66,
+              fillColor = ~colorQuantile(c("#f7fbff", "#73b2d8", "#08306b"), ways_sq_km)(ways_sq_km),
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE))
+```

@@ -1,0 +1,211 @@
+---
+title: "OSM data within R"
+description: "OpenStreetMap --- free and open geographical data from the whole world on hand. How to access it, how to work with it, and finally --- how to display it."
+author: "Grzegorz Sapijaszko"
+date: "2022-02-05"
+categories: [R, openstreetmap, maps]
+bibliography: ../../references.bib
+image: map1.png
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(dplyr)
+library(sf)
+```
+
+## Introduction
+
+[OpenStreetMap](https://www.openstreetmap.org) is a project which creates and distributes free geographic data for the world. Based on this data a hundreds of other products evolved, including [OSM Map](https://www.openstreetmap.org), [Nominatim](https://nominatim.org/) -- an open source geocoding service, routing services like [OSRM](http://project-osrm.org/) and [OpenRouteService](https://maps.openrouteservice.org/) among others, several maps styles, etc. For comprehensive overview you can check [OSM Wiki](https://wiki.openstreetmap.org/wiki/Use_OpenStreetMap).
+
+## Data access and download
+
+You can download OpenStreetMap dataset is number of ways[^1], either the whole planet, a particular region, or ad hock data via [Overpass](https://overpass-turbo.eu/). Build around [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) it allows to filter out any feature and get the OSM data quickly. Overpass API is used in `osmdata` package [@osmdata2017] which will be used in our examples.
+
+[^1]: for details see https://wiki.openstreetmap.org/wiki/Downloading_data
+
+Let's load the library and check it's version
+
+```{r}
+#| label: osmdata
+#| echo: true
+#| message: true
+library(osmdata); packageVersion("osmdata")
+```
+
+OpenStreetMap represents physical features on the Earth using tags attached to its basic data structures (its nodes, ways, and relations). Each tag describes a geographic attribute of the feature being shown by that specific node, way or relation. Those nodes, ways and relations can be translated to geographic objects like points, lines and polygons (closed lines). Relations in OSM are used to describe relationship between features, or other relations. For example Route 66[^2] in US described as relation consist of 11 other relations, which then divides to individual ways. As said, to describe the features a tagging system is used with with `key=value` pairs, where `key` corresponds to a topic, category, or type of feature (e.g., highway or name) and `value` provides detail for the key-specified feature[^3]. A few examples:
+
+[^2]: https://www.openstreetmap.org/relation/93155
+
+[^3]: For comprehensive list see https://wiki.openstreetmap.org/wiki/Map_features
+
+-   `boundary = administrative` -- for any kind of administrative boundaries from hamlet, through community, county to country
+-   `amenity = pub`
+-   `highway = residential`
+
+The typical workflow will follow those steps:
+
+-   get bounding box of place of interest (using `getbb()` function)
+-   create a Overpass query (with `opq()`)
+    -   add interesting features to the query ( using `add_osm_feature()` or `add_osm_features()` for several objects at once)
+-   run the query and get the data
+
+In below example we will get a boundaries of my village, roads, add few amenities and draft it on a map.
+
+Firstly, let's try to find a bounding box using `getbb()` function. This function uses Nominatim API to find the bounding box associated with place names.
+
+```{r}
+#| label:  getboundingbox
+Lbb <- getbb("Lubnów, Oborniki Śląskie, Poland", format_out = "matrix")
+Lbb
+```
+
+It may happen, that the result of `getbb()` slightly differs from expectation. It might be due to misspeling the name, or due the fact, that there is several places with the same name. In such case changing the `format_out` to `data.frame` may help.[^4] Let's see how many Lubnów's are in OSM:
+
+[^4]: Instead of `matrix` or `data.frame` we can get the result of `getbb()` as `polygon` or `sf_polygon` for polygons that work with `sf` package.
+
+```{r}
+#| label:  getLubnow
+getbb("Lubnów", format_out = "data.frame") |>
+  select(display_name, boundingbox)
+```
+
+Let's add a bit of space around. Please remember, the OSM data is provided in EPSG:4326 coordinate system[^5] (the same used in GPS devices or by Google Maps) where latitude and longitude are given in decimal degrees, so we have to extend the bounding box with the degrees (or tenth of it) as well. We will create a simple matrix and add it to original bbox.
+
+[^5]: https://epsg.io/4326
+
+```{r}
+#| label:  extendBB
+addM <- matrix(data = c(-0.01, -0.01, 0.01, 0.01), nrow = 2, ncol = 2)
+newBB <- Lbb + addM
+```
+
+Now, we will create a Overpass query and search for highways using `"highway"` as a key:
+
+```{r}
+#| label: getHighways
+highways <- opq (newBB, timeout = 60) |> 
+  add_osm_feature (key = "highway") |>
+  osmdata_sf()
+```
+
+`osmdata_sf` returns the data in `sf` format, which allows smooth integration with `sf` package. You can use `osmdata_sp()` for `sp` format, `osmdata_sc()` for silicate `sc` or `osmdata_xml()` function to get the data in XML format. Let's grab some other data: administrative boundaries, buildings and a few amenities. We will use `add_osm_features()` function, which allows to get several features at the time. Features inserted in `features =` list are combined with logical `OR`.
+
+```{r}
+#| label: getOtherData
+otherdata <- opq(newBB, timeout = 60) |>
+  add_osm_features(
+    features = c(
+      "\"boundary\"= \"administrative\"",
+      "\"building\"",
+      "\"shop\"",
+      "\"historic\"=\"archaeological_site\""
+    )
+  ) |>
+  osmdata_sf()
+```
+
+## Filtering and displaying the data
+
+As the data is already fetched, let's show them. For visualization we can use just internal `plot()` function or any fancy package like `ggplot2` or `osmplotr` [@R-osmplotr] which is companion package to `osmdata`.
+
+```{r}
+#| label: osmplotr
+#| echo: false
+library(osmplotr)
+```
+
+The data returned from Overpass consist of `osm_points`, `osm_lines`, `osm_polygons` and `osm_multipolygons`. First of all we have to filter out only those geometries which we will use. Starting with village boundary:
+
+```{r}
+#| label: villageBoundary
+villageBoundary <- otherdata$osm_multipolygons |>
+  filter(boundary == "administrative" & admin_level == 8 & name == "Lubnów")
+```
+
+Then splitting roads by its priority, as it will be drawn by lines with different attributes.
+
+```{r}
+#| label: highwaysFiltering
+secondary <- highways$osm_lines |>
+  filter(highway %in% c("secondary"))
+tertiary <- highways$osm_lines |>
+  filter(highway %in% c("tertiary", "unclassified"))
+service <-  highways$osm_lines |>
+  filter(highway %in% c("service", "residential"))
+track <-  highways$osm_lines |>
+  filter(highway %in% c("track"))
+```
+
+And finally buildings, shop(s) and archaeological sites.
+
+```{r}
+#| label: buildings
+buildings <- otherdata$osm_polygons |>
+  filter((!is.na(building))) |>
+  select(osm_id, geometry)
+```
+
+With shops it will be a bit tricky, as they may appear as a `osm_points` and/or `osm_polygons`, where tag `shop` is assigned to `building`. We have to ascertain both sets and glue the interesting data together. Another step which will be taken is to find centroids of the polygons and convert it to point geometries, using `st_centroid()` function from `sf` package.
+
+```{r}
+#| label: shops
+shops <- otherdata$osm_points |>
+  filter(!is.na(shop)) |>
+  select(osm_id, opening_hours, shop, geometry)
+
+shops<- rbind(shops,
+      otherdata$osm_polygons |>
+        filter(!is.na(shop)) |>
+        mutate(geometry = st_centroid(geometry)) |>
+        select(osm_id, opening_hours, shop, geometry)
+     )
+shops <- shops |>
+  filter(shop %in% c("convenience", "supermarket"))
+```
+
+And two historical settlements in the neighborhood.
+
+```{r}
+#| label: archaeologicalSites
+archaeological <- otherdata$osm_points |>
+  filter(historic == "archaeological_site") |>
+  select(osm_id, historic, geometry)
+```
+
+Let's build the map using `osm_basemap()` which set up the boundaries, and then adding features with `add_osm_objects()` function:
+
+```{r}
+#| label: buildingTheMap
+map <- osm_basemap(bbox = newBB, bg = "gray95")
+map <- add_osm_objects(map, villageBoundary, col = "gray99", border = "red", size = 1.2)
+map <- add_osm_objects(map, secondary, size = 3, shape = 1, col = "orange")
+map <- add_osm_objects(map, secondary, size = 1.2, shape = 1, col = "darkred")
+map <- add_osm_objects(map, tertiary, col = "black", size = 0.8)
+map <- add_osm_objects(map, service, col = "gray40", size = 0.4)
+map <- add_osm_objects(map, track, col = "gray60", size = 0.2)
+map <- add_osm_objects(map, buildings, col = "brown")
+map <- add_osm_objects(map, shops, size = 3, col = "darkblue")
+map <- add_osm_objects(map, archaeological, size = 3, col = "darkgreen")
+map <- add_axes (map, colour = "blue", pos = c(0.02, 0.02),
+          fontsize = 4, fontface = 2, fontfamily = "Times")
+```
+
+And finally let's print the map:
+
+```{r}
+#| label: printingMap
+#| eval: false
+print_osm_map(map)
+```
+
+```{r}
+#| label: map1-print
+#| echo: false
+#| eval: false
+print_osm_map (map, filename = "map1.png", width = 600,
+               units = "px", dpi = 96)
+```
+
+![Our first map based on OSM data](map1.png)

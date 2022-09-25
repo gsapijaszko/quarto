@@ -1,0 +1,133 @@
+---
+title: "On bike around chimney"
+description: "Nothing special, just a few words from last biking. And a way to show the track and couple of photos."
+author: "Grzegorz Sapijaszko"
+date: "2022-02-07"
+bibliography: ../../references.bib
+categories: [R, rStrava, leaflet, maps]
+image: "image.jpg"
+draft: false
+freeze: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+#| echo: false
+# library(tidyverse)
+library(rStrava)
+# library(ggplot2)
+# library(ggmap)
+library(googlePolylines)
+library(leaflet)
+```
+
+When the winds blows, it's time for bike.
+
+### Strava and R
+
+Biking is my way of daily commuting. It's also a way to go here and there, usually with panniers and hammock in them. I though it would be nice to illustrate the post with track on map. Started to looking around what's available to process `GPX` tracks in R and found a few examples; there were attempts using `XML` package [@lizarazoRPubsReadingPlotting; @wolferStayTrackPlotting2014], there are some promising functions: `readGPX()` in `plotKLM` or `read_GPX()` in `tmaptools` package.
+
+I'm using Strava for long time as odometer and track logger. How I was surprised when found `rStrava` package. [@R-rStrava]. It allows you to get the Strava activities, run couple of analysis, and together with Google API key --- create a heat maps. But let's see what's inside (and how to use it). To get the access to Strava you have to create Strava API key - the whole procedure is well described in [readme](https://github.com/fawda123/rStrava)
+
+After creating API key and configuring the token, we can access the data:
+
+```{r}
+#| label: stoken
+stoken <- httr::config(token = readRDS('../../.httr-oauth')[[1]])
+```
+
+Let's grab basic information about myself :)
+
+```{r}
+#| label: myinfo
+myinfo <- get_athlete(stoken, id = '16504523')
+myinfo$username
+```
+
+Most functions of `rStrava` package depends on Google Maps API, however I would like to show a bit different approach. As we can get the activities and process it independently, let's get some data:
+
+```{r}
+#| label: my_acts
+my_acts <- get_activity_list(stoken, 
+             after = as.Date("2021-08-07"), 
+             before = as.Date("2021-08-15"))
+```
+
+The output of `get_activity_list()` returns a `list` of activities. We can convert it to more easy to work with format like `data.table` with `compile_activities()` function. The resulting data frame has 54 variables, just showing few of them:
+
+```{r}
+#| label: my_data
+my_data <- compile_activities(my_acts)
+my_data[1:2, c("id", "distance", "average_speed", "max_speed", "total_photo_count")]
+```
+
+The activity geometry received from Strava is encoded by [Google polyline algorithm](https://developers.google.com/maps/documentation/utilities/polylinealgorithm). To decode it we will use `googlePolylines` package [@R-googlePolylines]. To apply calculation to all polylines in data frame we will build a small function. It takes polyline as argument, decode it, converts to linestring (using `sf_linestring()` from `sfheaders` package [@R-sfheaders]) and assigning proper CRS by `st_crs()` from `sf` package:
+
+```{r}
+#| label: function_definition
+decPolilineAsLinestring <- function (polyline) {
+  b <- as.data.frame(googlePolylines::decode(polyline))
+  c <- sfheaders::sf_linestring(b, x="lon", y="lat")
+  sf::st_crs(c) <- 4326
+  return (c$geometry)
+}
+```
+
+Let's apply the function to our data:
+
+```{r}
+#| label: apply
+my_data <- my_data |>
+  dplyr::rowwise() |>
+  dplyr::mutate(geometry = decPolilineAsLinestring(map.summary_polyline))
+```
+
+And finally, we can plot it using `leaflet` package:
+
+```{r}
+#| label: leaflet
+library(leaflet)
+leaflet(my_data$geometry) |>
+  addTiles() |>
+  addPolylines()
+```
+
+Easy, isn't it?
+
+But what about photos? Why not to add them to the map? We could reuse the photos which are uploaded to Strava (do you remember `total_photo_count` variable from `my_data` table?), however for some reasons Strava not always keeps the exif coordinates within the photo. Therefore photos will be stored locally, and we will use `exiftoolr` package [@R-exiftoolr] to access their coordinates.
+
+```{r}
+#| label: exiftool
+#| echo: false
+library(exiftoolr)
+photos <- exif_read(path = "photos", recursive = TRUE)
+```
+
+And extend our map:
+
+```{r}
+#| label: with_photos
+#| column: body
+map <- leaflet(my_data$geometry)
+map <- addTiles(map)
+map <-   addPolylines(map, color = "#0000FF")
+for (i in 1:nrow(photos)) {
+  map <- addMarkers(map, 
+                    lng = photos[i,"GPSLongitude"], 
+                    lat = photos[i,"GPSLatitude"], 
+                    popup = paste0("<a href = photos/", photos[i, "FileName"], 
+                            " target = \"_blank\">", "<img src = photos/", 
+                            photos[i, "FileName"], " width = \"300\">", "</a>"))
+}
+map
+```
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| eval: false
+packages <- c("googlePolylines", "leaflet", "sfheaders", "sf", "exiftoolr")
+knitr::write_bib(packages, file = "../../packages.bib")
+```
