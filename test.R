@@ -1,14 +1,41 @@
 osmFile <- "/home/sapi/planet_osm/poland-latest.osm.pbf"
+water <- "data/water-polygons-split-4326/water_polygons.shp"
 
 a <- osmextract::oe_read(
-  file_path = osmFile, layer = "multipolygons", 
-#  extra_tags = c("teryt:terc", "wikipedia", "wikidata"),
+  file_path = osmFile, layer = "multipolygons",
+  # extra_tags = c("teryt:terc", "wikipedia", "wikidata"),
   query = "SELECT * FROM multipolygons WHERE admin_level = '4' AND teryt_terc <> ''"
 )
 
-a |>
+xmin <- floor(sf::st_bbox(a)[1])
+xmax <- ceiling(sf::st_bbox(a)[3])
+ymin <- floor(sf::st_bbox(a)[2])
+ymax <- ceiling(sf::st_bbox(a)[4])
+
+bbbox <- sf::st_bbox(c(xmin, xmax, ymin, ymax), crs = 4326)
+
+abbox <- sf::st_bbox(a) |>
+  sf::st_as_sfc() |>
+  sf::st_as_sf()
+
+abbox |>
   sf::st_geometry() |>
   plot()
+
+a |>
+  sf::st_geometry() |>
+  plot(add = TRUE)
+
+
+
+b <- sf::st_read(water, 
+  query = paste("SELECT * FROM water_polygons WHERE X between", xmin, "AND", xmax, "AND Y between", ymin, "AND", ymax))
+
+b |>
+  sf::st_union() |>
+  sf::st_intersection(abbox) |>
+  sf::st_geometry() |>
+  plot(add = TRUE, col = "steelblue")
 
 bbox <- sf::st_bbox(a) |>
   sf::st_as_sfc()
@@ -96,3 +123,6 @@ magick::image_read_svg(
 
 # przykład mapy
 # https://journal.r-project.org/archive/2011-1/RJournal_2011-1_Murrell.pdf
+
+
+?sf::st_read()

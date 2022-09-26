@@ -6,3 +6,4 @@
 config.yml
 _site/
 /.quarto/
+data/
