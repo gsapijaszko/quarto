@@ -14,5 +14,4 @@ about:
       text: Github
       href: https://github.com/gsapijaszko
 ---
-
-About this blog
+Fan of open source / data / knowledge, incurable optimist, everyday cyclist, occasional programmer, map maker, gardener... 

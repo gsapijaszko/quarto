@@ -32,8 +32,6 @@ dw <- config::get("osmdb")
 con <- dbConnect("PostgreSQL", dbname = dw$database, host = dw$server, user = dw$uid, password = dw$pwd)
 ```
 
-<!-- [This is a span that has the class aside which places it in the margin without a footnote number.]{.aside} -->
-
 Let's read the forest data from `SHP` file. As some of the areas have invalid geometries (usually self-intersections of polygons) we will apply `st_make_valid` function, transform it to EPSG:2180 reference system and add `id` and `area` columns.
 
 ```{r}

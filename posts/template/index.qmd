@@ -8,6 +8,14 @@ image: "image.jpg"
 draft: true
 ---
 
+```{r}
+#| label: prep
+#| echo: false
+#| output: false
+
+if(!dir.exists("data")) { dir.create("data") }
+```
+
 This is a post with executable code.
 
 ```{r}
@@ -34,4 +42,14 @@ st_read(con, query = "SELECT osm_id, way FROM planet_osm_line LIMIT 1")
 #| output: false
 #| 
 dbDisconnect(con)
+```
+
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| eval: true
+packages <- c("terra")
+knitr::write_bib(packages, file = "../../packages.bib")
 ```

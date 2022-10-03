@@ -5,7 +5,7 @@ execute:
   freeze: auto
 
 website:
-  title: "small tRiffles"
+  title: "small tRifles"
   description: "Głupotki"
   site-url: http://www.sapijaszko.net/glupotki/
   navbar:
