@@ -126,3 +126,34 @@ magick::image_read_svg(
 
 
 ?sf::st_read()
+
+
+#############
+# https://stackoverflow.com/questions/73942768/is-it-possible-to-measure-distances-between-each-and-every-sampling-point-220-l/73948330#73948330
+
+occ <- rgbif::occ_data(
+  scientificName = "Calystegia pulchra", 
+  country = "GB", 
+  hasCoordinate = TRUE
+)
+
+occ <- head(occ$data, 220) |>
+  sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) |>
+  subset(select = c("key", "scientificName"))
+
+m <- sf::st_distance(occ)
+m[1:4, 1:4]
+
+how_much <- function(matrix = m, row = 1, distance = 100000) {
+  length(which({{matrix}}[{{row}},] > units::as_units({{distance}}, "m")))
+}
+
+how_much(m, 2, 100000)
+
+occ |>
+  dplyr::mutate(row_number = dplyr::row_number()) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(dist_200000 = how_much(m, row_number, 200000))
+
+
+

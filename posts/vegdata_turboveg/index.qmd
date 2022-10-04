@@ -74,7 +74,7 @@ kbl(layers, booktabs = TRUE,
 Let's load the library into R environment as usuall.
 
 ```{r}
-#| echo: TRUE
+#| echo: true
 library(vegdata)
 ```
 
@@ -83,8 +83,8 @@ As the `vegdata` internal functions extensively uses the directory structure of 
 [^2]: It works for Windows, and Unix/Linux with `wine.`
 
 ```{r}
-#| echo: TRUE
-#| message: TRUE
+#| echo: true
+#| message: true
 tv.home()
 ```
 
