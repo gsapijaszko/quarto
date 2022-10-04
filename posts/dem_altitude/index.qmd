@@ -214,7 +214,7 @@ TanDEM::download_TanDEM(
   dstdir = "data/tandem"
 )
 ```
-And let's build virtual raster and work with it:
+In next step we will build virtual raster and assign `NA` for cells with no data:
 
 ```{r}
 #| label: tandem_vrt
@@ -222,14 +222,20 @@ r <- list.files(path = "data/tandem/", pattern = "TDM1_.+.tif", full.names = TRU
 tandem <- terra::vrt(r, "data/tandem/vrt.vrt", overwrite = TRUE) 
 
 terra::NAflag(tandem) <- -32767
+```
 
+```{r}
+#| label: tandem_plot
+#| eval: false
+#| output: false
+#| 
 tandem <- tandem |>
   terra::mask(uk) |>
   terra::crop(uk)
 terra::plot(tandem)
 ```
 
-And the extracted elevations:
+Finally, we can extract elevations:
 
 ```{r}
 #| label: occ_elevation_3
@@ -263,13 +269,37 @@ aoi_geom_save_tif_matches(
 )
 ```
 
-TBC.
+```{r}
+#| label: copernicus_vrl
+
+r <- list.files(path = "data/copernicus/", pattern = "Copernicus_.+.tif", full.names = TRUE)
+cop <- terra::vrt(r, "data/copernicus/vrt.vrt", overwrite = TRUE) 
+
+occ |>
+  dplyr::mutate(ele_cop = terra::extract(cop, terra::vect(geometry))$vrt) |>
+  head(5)
+
+```
+
+### ElevatR - the black horse
+
+As the name suggests, `elevatr` is a package [@R-elevatr] to access elevation data from various sources. With `get_elev_point()` function obtaining the elevation is as simple as:
+
+```{r}
+#| label: elevatr
+
+occ |>
+  dplyr::mutate(ele_aws = elevatr::get_elev_point(geometry, src = "aws")$elevation) |>
+  head(5)
+```
+
+TBC...
 
 ```{r}
 #| label: write_bibliography
 #| echo: false
 #| include: false
 #| eval: false
-packages <- c("terra", "geodata", "rgbif", "CopernicusDEM", "TanDEM", "keyring")
+packages <- c("terra", "geodata", "rgbif", "CopernicusDEM", "TanDEM", "keyring", "elevatr")
 knitr::write_bib(packages, file = "../../packages.bib")
 ```
