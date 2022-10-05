@@ -17,6 +17,8 @@ website:
         href: https://twitter.com/gsapijaszko
       - icon: rss
         href: index.xml
+      - text: "{{< fa r >}}"
+        href: https://www.r-bloggers.com
   twitter-card: true
 format:
   html:

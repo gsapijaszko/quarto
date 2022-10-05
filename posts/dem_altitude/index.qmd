@@ -154,7 +154,7 @@ for (x in floor(bbox[1]):ceiling(bbox[3])) {
 }
 ```
 
-Hmm... In fact the boundaries of UK exceed the 60`r sym("degree")` N, so, let's modify our loop (we sacrificed the Shetland Islands, sorry):
+Hmm... In fact the boundaries of UK exceed the 60`r r2symbols::sym("degree")` N, so, let's modify our loop (we sacrificed the Shetland Islands, sorry):
 
 ```{r}
 #| label: elevation_60
@@ -246,7 +246,7 @@ occ |>
 
 ### Copernicus data
 
-The original EU-DEM v1.0 (or v1.1) data can be accessed from [copernicus.eu](https://land.copernicus.eu/imagery-in-situ/eu-dem) portal. It's divided in 10x10 degree tiles, which results in quite huge files (up to 5 GB per tile). The similar data set, in smaller tiles is available from [AWS Opendata Registry](https://registry.opendata.aws/copernicus-dem/). Details in [readme](https://copernicus-dem-30m.s3.amazonaws.com/readme.html). This set can be downloaded by `CopernicusDEM` package [@R-CopernicusDEM].
+The original EU-DEM v1.0 (or v1.1) data can be accessed from [copernicus.eu](https://land.copernicus.eu/imagery-in-situ/eu-dem) portal. It's divided in 10x10 degree tiles, which results in quite huge files (up to 5 GB per tile). The similar data set, in smaller tiles is available from [AWS Opendata Registry](https://registry.opendata.aws/copernicus-dem/). Details in [readme](https://copernicus-dem-30m.s3.amazonaws.com/readme.html). This set can be downloaded by `CopernicusDEM` package [@R-CopernicusDEM]. Please note, that this dataset is a Digital Surface Model, where elevation measurements represent the surface of the Earth including buildings and infrastructure.
 
 ```{r}
 #| label: copernicus
@@ -254,7 +254,7 @@ The original EU-DEM v1.0 (or v1.1) data can be accessed from [copernicus.eu](htt
 #| echo: true
 library(CopernicusDEM)
 
-polygon <- sf::st_as_sf(gb)
+polygon <- sf::st_as_sf(uk)
 sf::sf_use_s2(use_s2 = FALSE)
 
 if(!dir.exists("data/copernicus")) { dir.create("data/copernicus")}

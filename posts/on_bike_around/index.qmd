@@ -1,6 +1,6 @@
 ---
 title: "On bike around chimney"
-description: "Nothing special, just a few words from last biking. And a way to show the track and couple of photos."
+description: "Nothing special, just a few words from last cycling. And a way to show the track and couple of photos on the map."
 author: "Grzegorz Sapijaszko"
 date: "2022-02-07"
 bibliography: ../../references.bib
@@ -26,7 +26,7 @@ When the winds blows, it's time for bike.
 
 ### Strava and R
 
-Biking is my way of daily commuting. It's also a way to go here and there, usually with panniers and hammock in them. I though it would be nice to illustrate the post with track on map. Started to looking around what's available to process `GPX` tracks in R and found a few examples; there were attempts using `XML` package [@lizarazoRPubsReadingPlotting; @wolferStayTrackPlotting2014], there are some promising functions: `readGPX()` in `plotKLM` or `read_GPX()` in `tmaptools` package.
+Cycling is my way of daily commuting. It's also a way to go here and there, usually with panniers and hammock in them. I though it would be nice to illustrate the post with track on map. Started to looking around what's available to process `GPX` tracks in R and found a few examples; there were attempts using `XML` package [@lizarazoRPubsReadingPlotting; @wolferStayTrackPlotting2014], there are some promising functions: `readGPX()` in `plotKLM` or `read_GPX()` in `tmaptools` package.
 
 I'm using Strava for long time as odometer and track logger. How I was surprised when found `rStrava` package. [@R-rStrava]. It allows you to get the Strava activities, run couple of analysis, and together with Google API key --- create a heat maps. But let's see what's inside (and how to use it). To get the access to Strava you have to create Strava API key - the whole procedure is well described in [readme](https://github.com/fawda123/rStrava)
 
@@ -34,7 +34,7 @@ After creating API key and configuring the token, we can access the data:
 
 ```{r}
 #| label: stoken
-stoken <- httr::config(token = readRDS('../../.httr-oauth')[[1]])
+stoken <- httr::config(token = readRDS('.httr-oauth')[[1]])
 ```
 
 Let's grab basic information about myself :)
@@ -99,7 +99,6 @@ But what about photos? Why not to add them to the map? We could reuse the photos
 
 ```{r}
 #| label: exiftool
-#| echo: false
 library(exiftoolr)
 photos <- exif_read(path = "photos", recursive = TRUE)
 ```
