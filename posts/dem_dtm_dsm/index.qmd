@@ -1,8 +1,8 @@
 ---
 title: "Post With Code"
 author: "Grzegorz Sapijaszko"
-date: "2022-09-09"
-categories: [news, code, analysis]
+date: "2022-10-09"
+categories: [DEM, DTM, DSM, R]
 bibliography: bibliography.bib
 image: "image.jpg"
 draft: true
@@ -12,37 +12,18 @@ draft: true
 #| label: prep
 #| echo: false
 #| output: false
-
 if(!dir.exists("data")) { dir.create("data") }
 ```
 
-This is a post with executable code.
 
-```{r}
-#| label: setup
-#| output: false
-library(sf)
-library(RPostgreSQL)
-dw <- config::get("osmdb")
-con <- dbConnect("PostgreSQL", dbname = dw$database, host = dw$server, user = dw$uid, password = dw$pwd)
-```
+DEM, DTM or DSM? Three very similar concepts, but nevertheless representing different features. 
 
-```{sql}
-#| eval: false
-#| connection: con
-sql = SELECT osm_id, way FROM planet_osm_line LIMIT 1
-```
+- DEM (Digital Elevation Model) represents the Earth surface, without any features (either man made, either natural).
 
-```{r}
-#| echo: true
-st_read(con, query = "SELECT osm_id, way FROM planet_osm_line LIMIT 1")
-```
+- DTM (Digital Terrain Model) similar to DEM, however including all natural terrain features, like rivers and ridges. It's more detailed than DEM.
 
-```{r}
-#| output: false
-#| 
-dbDisconnect(con)
-```
+- DSM (Digital Surface Model) includes all features of the environment, like buildings, roads and trees.
+
 
 
 ```{r}
@@ -52,4 +33,11 @@ dbDisconnect(con)
 #| eval: true
 packages <- c("terra")
 knitr::write_bib(packages, file = "bibliography.bib")
+```
+
+
+
+
+```{r}
+
 ```

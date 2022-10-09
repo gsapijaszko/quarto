@@ -1,0 +1,14 @@
+{
+  "hash": "31d9f9421c18612a5c27aefbcf0b5fec",
+  "result": {
+    "markdown": "---\ntitle: \"Post With Code\"\nauthor: \"Grzegorz Sapijaszko\"\ndate: \"2022-10-09\"\ncategories: [DEM, DTM, DSM, R]\nbibliography: bibliography.bib\nimage: \"image.jpg\"\ndraft: true\n---\n\n::: {.cell}\n\n:::\n\n\n\nDEM, DTM or DSM? Three very similar concepts, but nevertheless representing different features. \n\n- DEM (Digital Elevation Model) represents the Earth surface, without any features (either man made, either natural).\n\n- DTM (Digital Terrain Model) similar to DEM, however including all natural terrain features, like rivers and ridges. It's more detailed than DEM.\n\n- DSM (Digital Surface Model) includes all features of the environment, like buildings, roads and trees.\n\n\n\n\n\n\n::: {.cell}\n\n:::",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
