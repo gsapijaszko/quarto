@@ -1,0 +1,55 @@
+---
+title: "Post With Code"
+author: "Grzegorz Sapijaszko"
+date: "2022-09-09"
+categories: [news, code, analysis]
+bibliography: bibliography.bib
+image: "image.jpg"
+draft: true
+---
+
+```{r}
+#| label: prep
+#| echo: false
+#| output: false
+
+if(!dir.exists("data")) { dir.create("data") }
+```
+
+This is a post with executable code.
+
+```{r}
+#| label: setup
+#| output: false
+library(sf)
+library(RPostgreSQL)
+dw <- config::get("osmdb")
+con <- dbConnect("PostgreSQL", dbname = dw$database, host = dw$server, user = dw$uid, password = dw$pwd)
+```
+
+```{sql}
+#| eval: false
+#| connection: con
+sql = SELECT osm_id, way FROM planet_osm_line LIMIT 1
+```
+
+```{r}
+#| echo: true
+st_read(con, query = "SELECT osm_id, way FROM planet_osm_line LIMIT 1")
+```
+
+```{r}
+#| output: false
+#| 
+dbDisconnect(con)
+```
+
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| eval: true
+packages <- c("terra")
+knitr::write_bib(packages, file = "bibliography.bib")
+```

@@ -37,7 +37,7 @@ On the global scale there are few sources available, including:
 -   SRTM90, SRTM30
 -   TanDEM-X
 
-Nasa held the SRTM\index{SRTM} (Shuttle Radar Topography Mission) in 2000. The first set of data was released in 2005, however the regions outside the United States were sampled at 3 arc-seconds, which is 1/1200th of a degree of latitude and longitude, or roughly 90 meters on equator [@farrShuttleRadarTopography2007]. In 2014 NASA released brand-new dataset with a resolution of 1 arc-second, or roughly 30 meters. [Earth Explorer](http://earthexplorer.usgs.gov/) provides the data.
+NASA held the SRTM\index{SRTM} (Shuttle Radar Topography Mission) in 2000. The first set of data was released in 2005, however the regions outside the United States were sampled at 3 arc-seconds, which is 1/1200th of a degree of latitude and longitude, or roughly 90 meters on equator [@farrShuttleRadarTopography2007]. In 2014 NASA released brand-new dataset with a resolution of 1 arc-second, or roughly 30 meters. [Earth Explorer](http://earthexplorer.usgs.gov/) provides the data.
 
 TanDEM-X\index{TanDEM-X} (TerraSAR-X add-on for Digital Elevation Measurements) data produced by SAR interferometry was acquired in January 2015; the production of the global DEM was completed in September 2016. The absolute height error is with about 1~m. The TanDEM-X 90m DEM publicly available has a pixel spacing of 3 arc-seconds, similar to SRTM90. It covers with 150 Mio sqkm all Earth's landmasses from pole to pole. More information and data available from [EOC Geoservice](https://geoservice.dlr.de/web/dataguide/tdm90/) portal.
 
@@ -76,7 +76,7 @@ library(sf)
 
 ### SRTM
 
-To download the SRTM rasters we can use one of `elevation_` functions from `geodata` package [@R-geodata].
+To download the SRTM rasters we can use one of `elevation_xx()` functions from `geodata` package [@R-geodata].
 
 ```{r}
 #| label: ele
@@ -124,7 +124,7 @@ occ |>
   plot(add = TRUE)
 ```
 
-Having our sample data prepared, which is class of `r class(occ)` we can add the elevation to the set using `extract()` function form `terra`. Function `extract()` requires an object of class SpatVector
+Having our sample data prepared (which is class of `r class(occ)`) we can add the elevation to the set using `extract()` function form `terra`. It requires an object of class SpatVector.
 
 ```{r}
 #| label: elevation_extract
@@ -134,9 +134,9 @@ occ |>
   head(5)
 ```
 
-Points with no value (`elevation = NaN`) may be caused by inaccuracy or rounding of coordinates when data is anonymized by GBIF. And in fact, if we checked the fourth point, it would turn out to be at sea. All other elevations are given in meters.
+Points with no value (`elevation = NaN`) may be caused by inaccuracy or rounding of coordinates when data is normalized by GBIF. In fact, if we checked the fourth point, it would turn out to be at sea. All other elevations are given in meters.
 
-Let's try more accurate data, with 3 arcs sec resolution, for UK. Function `elevation_3s(lon, lat, ...)` from `geodata` will help to acquire all necessary tiles. To get the `lon` and `lat` parameters we will download the UK boundaries and check the bounding box.
+Let's try more accurate data for UK with 3 arcs sec resolution. Function `elevation_3s(lon, lat, ...)` from `geodata` will help to acquire all necessary tiles. To get the `lon` and `lat` parameters we will download the UK boundaries and check the bounding box.
 
 ```{r}
 #| label: elevation_3s
@@ -154,7 +154,7 @@ for (x in floor(bbox[1]):ceiling(bbox[3])) {
 }
 ```
 
-Hmm... In fact the boundaries of UK exceed the 60`r r2symbols::sym("degree")` N, so, let's modify our loop (we sacrificed the Shetland Islands, sorry):
+Hmm... In fact the boundary of UK exceeds the 60`r r2symbols::sym("degree")` N, so, let's modify our loop (we sacrificed the Shetland Islands, sorry):
 
 ```{r}
 #| label: elevation_60
@@ -192,13 +192,13 @@ We got quite similar results regardless of resolution. On the other hand, if the
 ### TanDEM-X
 [The original package is a bit outdated, and you have to change baseurl variable in `download_TanDEM()` function. There is [my fork](https://github.com/gsapijaszko/TanDEM-R) already.]{.aside}
 
-TanDEM data is available from [https://download.geoservice.dlr.de/TDM90/](https://download.geoservice.dlr.de/TDM90/) service. To download the neccessary data we will use `TanDEM` package [@R-TanDEM] available on [GitHub](https://github.com/meteosimon/TanDEM-R).
+TanDEM data is available from [https://download.geoservice.dlr.de/TDM90/](https://download.geoservice.dlr.de/TDM90/) service. To download the necessary data we will use `TanDEM` package [@R-TanDEM] available on [GitHub](https://github.com/meteosimon/TanDEM-R).
 
 Please remember to set up the keyring with your user name, like:
 
 ```{r}
 #| eval: false
-keyring::key_set(service = "geoservice.dlr", username = "grzegorz.sapijaszko@gmail.com")
+keyring::key_set(service = "geoservice.dlr", username = "grzegorz@sapijaszko.net")
 ```
 
 ```{r}
@@ -228,6 +228,7 @@ terra::NAflag(tandem) <- -32767
 #| label: tandem_plot
 #| eval: false
 #| output: false
+#| echo: false
 #| 
 tandem <- tandem |>
   terra::mask(uk) |>
@@ -283,7 +284,7 @@ occ |>
 
 ### ElevatR - the black horse
 
-As the name suggests, `elevatr` is a package [@R-elevatr] to access elevation data from various sources. With `get_elev_point()` function obtaining the elevation is as simple as:
+As the name suggests, `elevatr` is a package [@R-elevatr] to access elevation data from various sources. With help of `get_elev_point()` function obtaining the elevation is as simple as:
 
 ```{r}
 #| label: elevatr

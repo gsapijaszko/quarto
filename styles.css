@@ -2,5 +2,29 @@
 :root {
   --bs-body-font-size: 0.9rem;
   --bs-body-text-align: justify;
-  --bs-body-line-height: 1.2;
+  --bs-body-line-height: 1.25;
+}
+
+.listing-description {
+  text-indent: 1em;
+}
+p {
+  text-indent: 1em;
+  hyphens: auto;
+  margin-bottom: 0.2rem;
+  orphans: 3;
+  widows: 3;
+}
+h2, .h2 {
+  padding-bottom: 0.3rem;
+}
+h1, .h1, h2, .h2 {
+  margin-bottom: 1.6rem;
+}
+
+.blockquote {
+  margin-top: 0.5rem;
+}
+.blockquote p {
+  text-indent: 0em;
 }
