@@ -26,6 +26,13 @@ DEM, DTM or DSM? Three very similar concepts, but nevertheless representing diff
 
 
 
+<!--
+jsonlite::read_json("https://api.open-elevation.com/api/v1/lookup?locations=51.2606,16.8941")
+# https://github.com/ajnisbet/opentopodata
+jsonlite::read_json("https://api.opentopodata.org/v1/eudem25m?locations=51.2606,16.8941")
+https://rdrr.io/github/edwardlavender/flapper/man/query_open_topo.html
+-->
+
 ```{r}
 #| label: write_bibliography
 #| echo: false
