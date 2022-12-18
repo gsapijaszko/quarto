@@ -3,7 +3,7 @@ title: "Cycling infrastructure in the town"
 subtitle: "Mapping with OpenStreetMap"
 author: "Grzegorz Sapijaszko"
 date: "2022-12-18"
-categories: [cycling, OSM, R]
+categories: [cycling, OSM, openstreetmap, R]
 bibliography: ../../references.bib
 # image: "image.jpg"
 draft: false
