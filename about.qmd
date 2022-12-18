@@ -15,3 +15,5 @@ about:
       href: https://github.com/gsapijaszko
 ---
 Fan of open source software/hardware, data, knowledge, incurable optimist, everyday cyclist, occasional programmer, map maker, gardener... In meantime ham radio operator (SQ6WZ) and photographer.
+
+<link rel="me" href="https://fosstodon.org/@gsapijaszko">

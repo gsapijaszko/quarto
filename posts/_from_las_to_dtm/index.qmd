@@ -1,0 +1,35 @@
+---
+title: "From LAS to DTM in a simple way"
+author: "Grzegorz Sapijaszko"
+date: "2022-10-28"
+categories: [news, code, analysis]
+bibliography: ../../references.bib
+image: "image.jpg"
+draft: true
+execute: 
+  eval: true
+---
+
+```{r}
+#| label: prep
+#| echo: false
+#| output: false
+
+if(!dir.exists("data")) { dir.create("data") }
+```
+```{r}
+#| label: setup
+#| output: false
+```
+
+
+
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| eval: true
+packages <- c("lidR")
+knitr::write_bib(packages, file = "../../packages.bib")
+```

@@ -6,6 +6,8 @@ categories: [DEM, DTM, DSM, R]
 bibliography: bibliography.bib
 image: "image.jpg"
 draft: true
+execute: 
+  eval: false
 ---
 
 ```{r}

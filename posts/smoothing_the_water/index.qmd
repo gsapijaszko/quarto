@@ -1,0 +1,161 @@
+---
+title: "Smoothing of water areas of DTM using ALS points"
+author: "Grzegorz Sapijaszko"
+date: "2022-11-13"
+categories: [R, DTM, smoothing, delineate, LIDAR, ALS]
+bibliography: ../../references.bib
+image: "images/dtm_after_smoothing.png"
+draft: false
+execute: 
+  eval: false
+---
+
+```{r}
+#| label: prep
+#| echo: false
+#| output: false
+#| eval: true
+
+if(!dir.exists("data")) { dir.create("data") }
+```
+
+When creating a Digital Terrain Models from LIDAR data, there are discontinuities (absence) of points over areas with water. Algorithms try to approximate missing points, but the result is generally inaccurate. In the case of the method based on triangular irregular network (TIN), such areas are usually represented by relatively large triangles (see @fig-dtm). Below is a method to smooth out such areas.
+
+My idea was to find a water areas with help of `lidRplugins::delineate_lakes()`, calculate the `mean` (or `min`) values and merge it with original DTM file. The workflow is shown on @fig-alorithm:
+
+
+```{r}
+#| label: fig-alorithm
+#| fig-cap: Algorithm for smoothing the water surface areas over DTM; r - rasters, v - vectors
+#| echo: false
+#| eval: true
+#| 
+DiagrammeR::DiagrammeR("graph TB;
+ A(LAS catalog)-->R(r, DTM, r); 
+ A --> L(l, delineated areas, v)
+ A --> V(v, water areas, v)
+ L --> i[intersects]
+ V --> i
+ i-->W(w, delineated water only, v);
+ R-->al[get mean value from water areas and bind to vector]
+ al-->W;
+ W-->RA[ra, rasterize it, r];
+ RA-->RB(rb, substitute with mean water altitude, r);
+ R-->RB")
+```
+
+Let's read the DTM already crated. It's shown on @fig-dtm.
+
+```{r}
+#| label: DTM_read
+#| eval: true
+#| 
+r <- terra::vrt("data/dtm/rasterize_terrain.vrt")
+```
+
+![DTM obtained from LAS with `rasterize_terrain()` function.](images/dtm_before_smoothing.png){#fig-dtm}
+
+To find and delineate/vectorize the water areas we will use `delineate_lakes()` function from `lidRplugins` package [@R-lidRplugins]. In result we will get a vector layer with areas of similar altitude. The `tol` and `tol2` parameters are used to set the tolerances.
+
+```{r}
+#| label: delineate_lakes
+#| warning: false
+#| message: false
+#| 
+l <- lidR::readLAScatalog("data/las/") |>
+  lidRplugins::delineate_lakes(tol = 1/1000, tol2 = c(1/10^6, 2/10^4)) |>
+  terra::vect(l) |>
+  terra::project(terra::crs(r))
+```
+
+As the output of `delineate_lakes()` can contain the flat terrain areas as well, we will filter out just water (`-keep_class 9`) points from `LAScatalog`, rasterize them and convert raster to polygon.
+
+```{r}
+#| label: only_water
+#| warning: false
+#| message: false
+#| 
+v <- lidR::readLAScatalog("data/las/", filter = "-keep_class 9") |>
+  lidR::rasterize_density() |>
+  terra::as.polygons() |>
+  terra::subset(density > 0, NSE = TRUE) |>
+  terra::project(terra::crs(r))
+```
+Now, having two polygons: 1st with delineated areas, and 2 only with water areas, lets intersect them to have only delineated water:
+
+```{r}
+#| label: intersects
+#| warning: false
+#| 
+w <- l |>
+  subset(terra::is.related(l, v, relation = "intersects"))
+```
+
+Now we are going to extract the `mean` (or you can use any other function) values of altitude for the vector areas and bind it to our vector layer.
+
+```{r}
+#| label: extract_values
+#| warning: false
+#| 
+w <- terra::extract(r, w, fun=min, bind = TRUE, na.rm=TRUE)
+w <- setNames(w, "mean_height")
+terra::writeVector(w, "data/w.gpkg", overwrite = TRUE)
+```
+
+```{r}
+#| label: read_w
+#| echo: false
+#| eval: true
+w <- terra::vect("data/w.gpkg")
+```
+
+```{r}
+#| label: fig-raster-water-plot
+#| fig-cap: DTM with vectorized water
+#| eval: true
+terra::plot(r, col = grDevices::gray.colors(50))
+terra::plot(w, add = TRUE)
+```
+
+And finally produce the output raster:
+
+```{r}
+#| label: output_raster
+#| eval: true
+#| warning: false
+#| 
+ra <- r
+ra[] <- NA
+ra <- terra::rasterize(w,ra, field = w$mean_height)
+
+indx <- !is.na(ra)
+rb <- r
+rb[indx] <- ra[indx]
+terra::writeRaster(rb, file = "data/rb.tif", overwrite = TRUE)
+```
+
+```{r}
+#| label: fig-output-raster
+#| fig-cap: Raster layer with rasterized aggregaded values for water areas
+#| echo: false
+#| eval: true
+#| 
+terra::plot(r, col = grDevices::gray.colors(50), 
+            mar = c(3, 6, 2, 6.4), 
+            plg = list(loc = "left"))
+terra::plot(w, add = TRUE)
+terra::plot(ra, add = TRUE,
+            plg = list(loc = "right"))
+```
+
+
+![DTM with smoothed water areas.](images/dtm_after_smoothing.png){#fig-dtm-after}
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| 
+packages <- c("terra", "lidR", "lidRplugins")
+knitr::write_bib(packages, file = "../../packages.bib")
+```

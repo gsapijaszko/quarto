@@ -45,9 +45,9 @@ For the Europe, there is a set released by Copernicus Programme named EU-DEM v1.
 
 [^1]: Digital Surface Model, not Digital Terrain Model!
 
-All of the above models are characterized by a spatial resolution of 30/90 meters. If more accurate data is needed, look for national sites, where you can download (or buy) the dataset. A few examples below.
+All of the above models are characterized by a spatial resolution of 30/90 meters. If more accurate data is needed, look for national sites, where you can download (or buy) the dataset. A few examples:
 
--   Czech Republic: You can find (and buy) Digital Terrain Model of the Czech Republic of the 4th (and 5th) generation on Czech Office for Surveying, Mapping and Cadastre (ČÚZK) portal[^2]. As Open Data it provides Data50 set which has been derived from a cartographic database for Base map CR 1 : 50 000 and it is totally comprised of 8 thematic groups. Data are provided as open data in SHP data format.
+-   Czech Republic: You can find (and buy) Digital Terrain Model of the Czech Republic of the 4th (and 5th) generation on Czech Office for Surveying, Mapping and Cadastre (ČÚZK) portal[^2]. As Open Data it provides Data50 set which has been derived from a cartographic database for Base map CR 1 : 50 000 and it is totally comprised of 8 thematic groups. Data are provided as open data in SHP format.
 
 -   Germany: Federal Agency for Cartography and Geodesy[^3] provides DEM in 200 m raster (Open Data), however several constituent states provides the data in much better resolution.
 
@@ -190,7 +190,6 @@ occ |>
 We got quite similar results regardless of resolution. On the other hand, if the your plots are located in mountainous region --- the higher the raster resolution, the better.
 
 ### TanDEM-X
-[The original package is a bit outdated, and you have to change baseurl variable in `download_TanDEM()` function. There is [my fork](https://github.com/gsapijaszko/TanDEM-R) already.]{.aside}
 
 TanDEM data is available from [https://download.geoservice.dlr.de/TDM90/](https://download.geoservice.dlr.de/TDM90/) service. To download the necessary data we will use `TanDEM` package [@R-TanDEM] available on [GitHub](https://github.com/meteosimon/TanDEM-R).
 
@@ -209,7 +208,7 @@ if(!dir.exists("data/tandem")) { dir.create("data/tandem") }
 TanDEM::download_TanDEM(
   lon = c(bbox[1], bbox[3]),
   lat = c(bbox[2], bbox[4]),
-  usr = "grzegorz.sapijaszko@gmail.com",
+  usr = "grzegorz@sapijaszko.net",
   srv = "geoservice.dlr",
   dstdir = "data/tandem"
 )

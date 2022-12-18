@@ -14,3 +14,5 @@ listing:
 page-layout: full
 title-block-banner: true
 ---
+
+<link rel="me" href="https://fosstodon.org/@gsapijaszko">

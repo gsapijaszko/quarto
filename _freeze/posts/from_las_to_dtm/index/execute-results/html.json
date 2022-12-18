@@ -1,0 +1,14 @@
+{
+  "hash": "f40b554e7a04ee7929a391c808079b8a",
+  "result": {
+    "markdown": "---\ntitle: \"From LAS to DTM in a simple way\"\nauthor: \"Grzegorz Sapijaszko\"\ndate: \"2022-10-28\"\ncategories: [news, code, analysis]\nbibliography: ../../references.bib\nimage: \"image.jpg\"\ndraft: true\nexecute: \n  eval: true\n---\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n\n:::\n\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

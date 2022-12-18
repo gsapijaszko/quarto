@@ -1,0 +1,357 @@
+---
+title: "Cycling infrastructure in the town"
+subtitle: "Mapping with OpenStreetMap"
+author: "Grzegorz Sapijaszko"
+date: "2022-12-18"
+categories: [cycling, OSM, R]
+bibliography: ../../references.bib
+# image: "image.jpg"
+draft: false
+---
+
+```{r}
+#| label: prep
+#| echo: false
+#| output: false
+
+if(!dir.exists("data")) { dir.create("data") }
+```
+
+Another post inspired by questions on SE, see [here](https://opendata.stackexchange.com/questions/20261/cycling-infrastracture-per-city-in-europe) or [here](https://stackoverflow.com/questions/74487471/map-osmdata-cycleways-in-r-how-to-include-cyclosm-cycleways/74488879#74488879). And great opportunity to explore tagging of bicycle related features in OpenStreetMap. An example based on Wrocław, medium size (680 000 inhabitants) town in south-west part of Poland.
+
+## Highways and tracks
+
+In OpenStreetMap data the roads designated for bicycle can be described in different ways. The lanes can be separate, can be part of general highway, or shared with pedestrians (and in some countries even with other vehicles). Let's have a quick overview of the used tags.
+
+::: {.callout-warning}
+This is non exhaustive list of all possible tags which can be used. For more information see wiki description of [cycleway](https://wiki.openstreetmap.org/wiki/Key:cycleway) and [bicycle infrastructure](https://wiki.openstreetmap.org/wiki/Bicycle).
+:::
+
+Separate ways for cycling usually are described as `highway = cycleway`, and in the field they are marked with white bicycle on blue background sign.[^1]
+
+[^1]: All signs shared from Wikimedia commons. For similar signs in other European countries have a look on [Comparison of European road signs](https://en.wikipedia.org/wiki/Comparison_of_European_road_signs).
+
+```
+highway = cycleway
+```
+
+::: column-margin
+![](https://upload.wikimedia.org/wikipedia/commons/3/30/PL_road_sign_C-13.svg){width="50px"}
+:::
+
+If the cycling lane is shared with pedestrians, the usual tagging is:
+
+```
+highway = footway | path
+bicycle = designated
+foot = designated
+```
+::: column-margin
+![](https://upload.wikimedia.org/wikipedia/commons/e/ee/PL_road_sign_C-13-16.svg){width="50px"} ![](https://upload.wikimedia.org/wikipedia/commons/2/2e/PL_road_sign_C-13-16a.svg){width="50px"}
+:::
+
+Another possibility is to share the lane with cars on any highway (primary, tertiary, residential, etc). It can be the lane in the same or opposite direction. Tagging
+
+```
+highway = *
+cycleway = lane
+```
+
+::: column-margin
+![](https://upload.wikimedia.org/wikipedia/commons/1/13/PL_road_sign_F-19.svg){height="50px"}
+
+![](https://upload.wikimedia.org/wikipedia/commons/c/c8/Znak_B-2+T-22.png){height="50px"}  ![](https://upload.wikimedia.org/wikipedia/commons/e/e2/Znak_D-3+T-22.png){height="50px"}
+:::
+
+is used to tag two-way streets where there are cycle lanes on both sides of the road, or one-way streets where the lane operating in the same direction as main traffic flow. `cycleway = opposite_lane` is used for contraflow; `cycleway = opposite` + `oneway:bicycle = no` where cyclist are permitted to travel in both direction on one-way street. For shared lanes with motor vehicles: `cycleway = shared_lane` and `cycleway=share_busway` with buses. For more specific tagging please check [OpenStreetMap wiki page](https://wiki.openstreetmap.org/wiki/Key:cycleway).
+
+In some countries additional tagging is in use. `highway = *` + `bicycle_road = yes` for signed roads and `cyclestreet = yes` for roads where other vehicles are allowed.[^2]
+
+[^2]: For details see [Key:bicycle_road](https://wiki.openstreetmap.org/wiki/Key:bicycle_road)
+
+::: column-margin
+![](https://upload.wikimedia.org/wikipedia/commons/4/4e/Zeichen_244.3_-_Beginn_einer_Fahrradzone,_StVO_2020.svg){width="50px"}
+:::
+
+## Other features
+
+Bicycle shops are tagged with `shop = bicycle`, and those which provide additional repair services have `service:bicycle:pair = yes` tags. There might be a do-it-yourself service stations, equipped with pump, wrenches and other helpful tools --- in such case they are tagged with `amenity = bicycle_repair_station`. 
+
+Bicycle parkings are tagged with `amenity = bicycle_parking`. In towns where you can rent a bike, you will find `amenity = bicycle_rental` tags.
+
+## Bicycle routes
+
+> Cycle routes or bicycle route are named or numbered or otherwise signed routes. May go along roads, trails or dedicated cycle paths.[^3] 
+
+[^3]: [https://wiki.openstreetmap.org/wiki/Cycle_routes](https://wiki.openstreetmap.org/wiki/Cycle_routes)
+
+They are tagged as a relations (several features grouped together with relation roles assigned)[^4]; they can be of different network levels: `network = icn | ncn | rcn | lcn` which corresponds to international route, a national route, a regional route or a local route. Below an example of tagging of Polish part of EuroVelo 9 route, which crosses Wrocław:
+
+    type = route
+    route = bicycle
+    network = icn
+    ref = EV9
+    colour = green
+    icn_ref = 9
+    
+[^4]: [https://wiki.openstreetmap.org/wiki/Relation](https://wiki.openstreetmap.org/wiki/Relation)
+
+As we already know and understand the attributes of the data, let's play with it a bit. In next paragraph we will assess quantitatively the bicycle infrastructure in Wrocław.
+
+## Wrocław's infrastructure
+
+For data access/download we will use `osmdata` package [@osmdata2017; @R-osmdata]. We will download town boundary, highways and other bicycle infrastructure. We will save the data for further reuse.
+
+```{r}
+#| label: download_data
+#| message: false
+#| eval: false
+#| code-fold: true
+
+get_osm_data <- function(place, feature, output_dir = "data") {
+  output_dir = paste0({{output_dir}}, "/", iconv(place, to="ASCII//TRANSLIT"))
+  if(!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  data_file = paste0(output_dir, "/", feature, ".rds")
+  if(!file.exists(data_file)) {
+    
+    bb <- osmdata::getbb(place, featuretype = "city")
+    switch(feature,
+           boundary = {
+             message(paste("Downloading boundary for", place))
+             osm_data <-osmdata::opq(bb, timeout = 25*100) |>
+               osmdata::add_osm_feature(key = "boundary", value = "administrative") |> 
+               osmdata::add_osm_feature(key = "admin_level", value = "6") |> 
+               osmdata::osmdata_sf() |>
+               osmdata::unique_osmdata()
+             saveRDS(osm_data, file = data_file)
+           },
+           highway = {
+             message(paste("Downloading highways for", place))
+             osm_data <-osmdata::opq(bb, timeout = 25*100) |>
+               osmdata::add_osm_features(features = c("\"highway\"", "\"cycleway\"")) |> 
+               osmdata::osmdata_sf() |>
+               osmdata::unique_osmdata()
+             saveRDS(osm_data, file = data_file)
+           },
+           bicycle = {
+             message(paste("Downloading bicycle infrastructure for", place))
+             osm_data <-osmdata::opq(bb, timeout = 25*100) |>
+               osmdata::add_osm_feature(key = "bicycle") |> 
+               osmdata::osmdata_sf() |>
+               osmdata::unique_osmdata()
+             saveRDS(osm_data, file = data_file)
+           }
+        )
+  } else {
+    message(paste("File", data_file, "already exists"))
+  }
+}
+
+features <- list("boundary", "highway", "bicycle")
+lapply(seq_along(features), function(i) get_osm_data("Wrocław", features[[i]], output_dir = "data"))
+```
+
+Having the data downloaded we can start our analysis. As first step we will create Wrocław's boundary as `sf` polygon, it will be used to crop remaining data sets to city limits.
+
+```{r}
+#| label: town_boundary
+tb <- readRDS("data/Wroclaw/boundary.rds")
+tb <- tb$osm_multipolygons |>
+  subset(name == "Wrocław") |>
+  subset(select = c("name", "geometry")) |>
+  sf::st_as_sf()
+sf::write_sf(tb, dsn = "data/wroclaw.gpkg", layer = "boundary", delete_layer = TRUE)
+```
+
+Highways and cycleways. As they might be returned from Overpass query as `osm_lines` and `osm_multilines` we have to bind them together.
+
+```{r}
+#| label: highways
+
+highways <- readRDS("data/Wroclaw/highway.rds")
+  hw <- highways$osm_lines |>
+    dplyr::select("osm_id", "name", "highway", "bicycle",
+                  "foot", starts_with(c("cycleway")), "oneway", 
+                  "surface", "vehicle")
+  if(!is.null(highways$osm_multilines)) {
+    multilines <- highways$osm_multilines |>
+      dplyr::select("osm_id", "name", "highway", "bicycle",
+                    "foot", starts_with(c("cycleway")), "oneway",
+                    "surface", "vehicle")
+    hw <- rbind(hw, multilines) |>
+      sf::st_as_sf()
+  }
+hw <- suppressWarnings(sf::st_intersection(hw, tb))
+sf::write_sf(hw, dsn = "data/wroclaw.gpkg", layer = "highways", delete_layer = TRUE)
+```
+
+With the highways prepared, let's run simple analysis: count the length of the roads for bikes, bikes + pedestrians, and cars only.
+
+### Bike only
+
+```{r}
+#| label: bike_only
+ddr <- hw |>
+  dplyr::filter(highway == "cycleway" | cycleway %in% c("lane", "track", "yes")) |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  dplyr::mutate(length = units::set_units(sf::st_length(geometry), "km")) |>
+  dplyr::mutate(category = "Bikes only") |>
+  sf::st_drop_geometry()
+```
+
+Very similar approach for other categories.
+
+```{r}
+#| label: tbl-summary_length
+#| tbl-cap: Summary of lenth of bike, shared with pedestrians, and cars roads in Wrocław
+#| code-fold: true
+ddrip <- hw |>
+  dplyr::filter(highway %in% c("path", "footway")) |>
+  dplyr::filter(bicycle == "designated") |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  dplyr::mutate(length = units::set_units(sf::st_length(geometry), "km")) |>
+  dplyr::mutate(category = "Bikes + Pedestrians") |>
+  sf::st_drop_geometry()
+
+cars_only <- hw |>
+  dplyr::filter(!highway %in% c("cycleway", "path", "footway")) |>
+  dplyr::filter(is.na(cycleway.left) | is.na(cycleway.right)) |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  dplyr::mutate(length = units::set_units(sf::st_length(geometry), "km")) |>
+  dplyr::mutate(category = "Cars only") |>
+  sf::st_drop_geometry()
+
+#' and let's bind them together
+
+ddr |>
+  rbind(ddrip) |>
+  rbind(cars_only) |>
+  dplyr::mutate(l = "Total length") |>
+  tidyr::pivot_wider(names_from = category, values_from = length) |>
+  dplyr::mutate(across(2:4, ~format(round(.x, 1), nsmall = 1))) |>
+  kableExtra::kbl(booktabs = TRUE, escape = F, linesep = "",
+    col.names = kableExtra::linebreak(c("", "Bikes only", "Bikes + Pedestrians", "Cars only"), align = "c"),
+    align = c("crrr")) |>
+  kableExtra::kable_styling()
+```
+
+Not much, as for 680k inhabitants town, around 0.5 km per 1000 ppl. And less than 10% in comparison to cars road network...
+
+If you would like to split it by surface (asphalt, concrete, etc), then we can just group our highways by that column, like
+
+````{r}
+#| label: bike_only_by_surface_example
+#| eval: false
+ddr <- hw |>
+  dplyr::filter(highway == "cycleway" | cycleway %in% c("lane", "track", "yes")) |>
+  dplyr::group_by(surface) |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  [...]
+````
+
+Which gives:
+```{r}
+#| label: tbl-bike_only_by_surface
+#| tbl-cap: Length of bike only roads by surface
+#| echo: false
+
+hw |>
+  dplyr::filter(highway == "cycleway" | cycleway %in% c("lane", "track")) |>
+  dplyr::group_by(surface) |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  dplyr::mutate(length = units::set_units(sf::st_length(geometry), "km")) |> 
+  sf::st_drop_geometry() |>
+  units::drop_units() |>
+  dplyr::arrange(dplyr::desc(length)) |>
+#  dplyr::mutate(across(length, ~format(round(.x, 2), nsmall = 2))) |>
+    kableExtra::kbl(booktabs = TRUE, escape = F, digits = 2, linesep = "",
+    col.names = c("Surface", "Length [km]"),
+    align = c("lr")) |>
+#   kableExtra::kable_paper("striped", full_width = F)  |>
+  kableExtra::kable_styling()
+
+```
+
+@fig-plots visualizes road networks and the density of it.
+
+```{r}
+#| label: fig-plots
+#| column: page
+#| layout-ncol: 2
+#| fig-cap: Plots of Wrocław highways
+#| fig-subcap: 
+#|   - Bikes
+#|   - Cars
+#| echo: false
+#| 
+
+ddr <- hw |>
+  dplyr::filter(highway == "cycleway" | cycleway %in% c("lane", "track"))
+
+ar <- hw |>
+  dplyr::filter(!highway %in% c("cycleway", "path", "footway")) |>
+  dplyr::filter(!cycleway.left %in% c(NA, "no") | !cycleway.right %in% c(NA, "no"))
+
+ddrip <- hw |>
+  dplyr::filter(highway %in% c("path", "footway")) |>
+  dplyr::filter(bicycle == "designated")
+
+
+suppressPackageStartupMessages(library(ggplot2))
+
+bb <- hw |>
+  dplyr::filter(!highway %in% c("path", "footway")) |>
+  dplyr::group_by(highway)
+
+drogi <- ddr |>
+  dplyr::mutate(name = "ddr")
+drogi <- ar |>
+  dplyr::mutate(name = "ar") |>
+  rbind(drogi)
+drogi <- ddrip |>
+  dplyr::mutate(name = "ddrip") |>
+  rbind(drogi)
+
+drogi <- drogi |>
+  dplyr::group_by(name) |>
+  dplyr::summarise(geometry = sf::st_union(geometry)) |>
+  sf::st_simplify()
+
+ggplot() +
+  geom_sf(data = tb) +
+  geom_sf(data = drogi, aes(color = name)) +
+  scale_color_manual(values = c("red", "black", "blue"), labels = c("cars + bike", "bike only", "pedestrian + bike")) +
+  annotate("text", x = 16.87, y = 51.045, label = "(C) OpenStreetMap contributors") +
+  theme_bw() +
+  theme(axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.title=element_blank(),
+        legend.position = c(0.9, 0.1)
+  ) +
+  xlab("") +
+  ylab("")
+
+ggplot() +
+  geom_sf(data = tb) +
+  geom_sf(data = bb) +
+  scale_color_manual(values = c("grey20"), labels = c("cars only")) +
+  annotate("text", x = 16.87, y = 51.045, label = "(C) OpenStreetMap contributors") +
+  theme_bw() +
+  theme(axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        legend.title=element_blank()
+  ) +
+  xlab("") +
+  ylab("")
+
+```
+
+
+```{r}
+#| label: write_bibliography
+#| echo: false
+#| include: false
+#| eval: true
+packages <- c("osmdata")
+knitr::write_bib(packages, file = "../../packages.bib")
+```

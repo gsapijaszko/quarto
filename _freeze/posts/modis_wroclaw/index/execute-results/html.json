@@ -1,0 +1,14 @@
+{
+  "hash": "01319e3201b98ad18ea211a5ce4ea9ab",
+  "result": {
+    "markdown": "---\ntitle: \"Post With Code\"\nauthor: \"Grzegorz Sapijaszko\"\ndate: \"2022-09-09\"\ncategories: [news, code, analysis]\nbibliography: ../../references.bib\nimage: \"image.jpg\"\ndraft: true\nexecute: \n  eval: false\n---\n\n::: {.cell}\n\n:::\n\n\nThis is a post with executable code.\n\n\n::: {.cell}\n\n```{.r .cell-code}\nlibrary(sf)\nlibrary(RPostgreSQL)\ndw <- config::get(\"osmdb\")\ncon <- dbConnect(\"PostgreSQL\", dbname = dw$database, host = dw$server, user = dw$uid, password = dw$pwd)\n```\n:::\n\n::: {.cell connection='con'}\n\n```{.sql .cell-code}\nsql = SELECT osm_id, way FROM planet_osm_line LIMIT 1\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nst_read(con, query = \"SELECT osm_id, way FROM planet_osm_line LIMIT 1\")\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\ndbDisconnect(con)\n```\n:::\n\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

@@ -13,17 +13,20 @@ website:
       - about.qmd
       - icon: github
         href: https://github.com/gsapijaszko
-      - icon: twitter
-        href: https://twitter.com/gsapijaszko
+      - icon: mastodon
+        href: "https://fosstodon.org/@gsapijaszko"
       - icon: rss
         href: index.xml
       - text: "{{< fa r >}}"
         href: https://www.r-bloggers.com
-  twitter-card: true
+#  twitter-card: true
 format:
   html:
     theme: flatly
     css: styles.css
 
-# comments:
-#   hypothesis: true
+comments:
+  giscus: 
+    repo: gsapijaszko/quarto
+ 
+  hypothesis: true
