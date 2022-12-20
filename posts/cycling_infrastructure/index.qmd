@@ -169,18 +169,21 @@ Highways and cycleways. As they might be returned from Overpass query as `osm_li
 #| label: highways
 
 highways <- readRDS("data/Wroclaw/highway.rds")
-  hw <- highways$osm_lines |>
+hw <- highways$osm_lines |>
+  dplyr::select("osm_id", "name", "highway", "bicycle",
+                "foot", starts_with(c("cycleway")), "oneway", 
+                "surface", "vehicle")
+if(!is.null(highways$osm_multilines)) {
+  multilines <- highways$osm_multilines |>
     dplyr::select("osm_id", "name", "highway", "bicycle",
-                  "foot", starts_with(c("cycleway")), "oneway", 
+                  "foot", starts_with(c("cycleway")), "oneway",
                   "surface", "vehicle")
-  if(!is.null(highways$osm_multilines)) {
-    multilines <- highways$osm_multilines |>
-      dplyr::select("osm_id", "name", "highway", "bicycle",
-                    "foot", starts_with(c("cycleway")), "oneway",
-                    "surface", "vehicle")
-    hw <- rbind(hw, multilines) |>
-      sf::st_as_sf()
-  }
+  hw <- rbind(hw, multilines)
+}
+hw <- hw |>
+  sf::st_as_sf()
+  
+sf::st_crs(hw) <- sf::st_crs(tb)
 hw <- suppressWarnings(sf::st_intersection(hw, tb))
 sf::write_sf(hw, dsn = "data/wroclaw.gpkg", layer = "highways", delete_layer = TRUE)
 ```
@@ -280,8 +283,8 @@ hw |>
 #| layout-ncol: 2
 #| fig-cap: Plots of Wrocław highways
 #| fig-subcap: 
-#|   - Bikes
-#|   - Cars
+#|   - for bikes
+#|   - for cars
 #| echo: false
 #| 
 
